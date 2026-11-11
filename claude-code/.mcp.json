@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "radiate": {
+      "type": "http",
+      "url": "https://mcp-dev.radiatestudio.ai/mcp"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+name: Validate
+
+# Runs only on pushes to main and on pull requests from branches in this
+# repository. Pull requests from forks never run here: this repository uses
+# self-hosted runners, and code from a fork must not run on them. A maintainer
+# reviews a fork's change and re-opens it from a branch in this repository.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    # Self-hosted only, on a dedicated runner group that holds no secrets
+    # (see CONTRIBUTING.md). Never a GitHub-hosted runner.
+    runs-on: [self-hosted, Linux, X64, agent-plugins-public]
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Validate manifests, skills and tool lists
+        run: python3 -I scripts/validate.py
+
+      - name: Validator self-tests
+        run: python3 -I -m unittest discover -s scripts -p "test_*.py"

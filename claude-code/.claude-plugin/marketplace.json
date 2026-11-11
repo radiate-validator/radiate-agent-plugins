@@ -1,0 +1,14 @@
+{
+  "name": "radiate",
+  "owner": {
+    "name": "Radiate Validator LLC",
+    "url": "https://radiatestudio.ai"
+  },
+  "plugins": [
+    {
+      "name": "radiate",
+      "source": "./",
+      "description": "Radiate Studio skills and the Radiate MCP server for Claude Code."
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "description": "Curated default tool list for the radiate MCP server. Hosts that support an allowlist (Hermes tools.default_enabled, OpenClaw profile allow lists, Claude Code permissions) should enable only these by default. Tools that a connection's Radiate catalog does not offer are simply absent; nothing here grants access.",
+  "server": "radiate",
+  "groups": {
+    "account_and_discovery": [
+      "get_mcp_identity",
+      "get_credit_balance",
+      "list_generation_models",
+      "search_models",
+      "recommend_model"
+    ],
+    "estimate": [
+      "estimate_generation_cost",
+      "estimate_model_cost",
+      "estimate_canvas_graph_cost",
+      "get_service_pricing"
+    ],
+    "generate": [
+      "generate_image",
+      "generate_video",
+      "generate_music",
+      "generate_with_model",
+      "create_media"
+    ],
+    "jobs": [
+      "get_generation_status",
+      "get_job",
+      "list_mcp_jobs",
+      "poll_generation"
+    ],
+    "projects": [
+      "list_projects",
+      "get_project_context",
+      "list_project_assets",
+      "create_project",
+      "add_project_note"
+    ],
+    "canvas": [
+      "run_canvas_graph"
+    ]
+  },
+  "opt_in": {
+    "run_compute_job": "Runs a job on a GPU connected through the Radiate compute connector. High risk: every call needs its own approval in Radiate. Enable it only for the radiate-local-compute skill."
+  },
+  "never_default": [
+    "blender_live_command",
+    "launch_original"
+  ],
+  "skill_tools": {
+    "_note": "Extra tools a skill uses beyond the default list. Enable them when you use that skill.",
+    "radiate-canvas": [
+      "list_canvas_boards",
+      "get_canvas_board",
+      "list_canvas_templates",
+      "list_node_catalog",
+      "get_node_schema",
+      "validate_canvas_graph",
+      "get_canvas_graph_run",
+      "retry_canvas_graph_node"
+    ],
+    "radiate-projects": [
+      "propose_project_change_set"
+    ],
+    "radiate-local-compute": [
+      "plan_compute_job",
+      "run_compute_job"
+    ]
+  }
+}

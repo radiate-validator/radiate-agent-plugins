@@ -1,0 +1,13 @@
+{
+  "name": "radiate",
+  "version": "0.1.0",
+  "description": "Radiate Studio for Claude Code: image, video and audio generation, projects and canvas workflows over Radiate's hosted MCP server, with a price shown before every spend. Preview: points at Radiate's development server.",
+  "author": {
+    "name": "Radiate Validator LLC",
+    "url": "https://radiatestudio.ai"
+  },
+  "homepage": "https://github.com/radiate-validator/radiate-agent-plugins",
+  "repository": "https://github.com/radiate-validator/radiate-agent-plugins",
+  "license": "Apache-2.0",
+  "keywords": ["radiate", "image-generation", "video-generation", "audio", "mcp"]
+}

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "radiate",
+  "version": "0.1.0",
+  "description": "Radiate Studio for AI agents: image, video and audio generation, projects and canvas workflows over Radiate's hosted MCP server, with a price shown before every spend. Preview: points at Radiate's development server.",
+  "author": {
+    "name": "Radiate Validator LLC",
+    "url": "https://radiatestudio.ai"
+  },
+  "homepage": "https://github.com/radiate-validator/radiate-agent-plugins",
+  "repository": "https://github.com/radiate-validator/radiate-agent-plugins",
+  "license": "Apache-2.0",
+  "keywords": [
+    "radiate",
+    "image-generation",
+    "video-generation",
+    "audio",
+    "music",
+    "mcp",
+    "creative"
+  ],
+  "extensions": {
+    "com.nousresearch.hermes": {
+      "servers": {
+        "radiate": {
+          "trust": "untrusted",
+          "cost_unit": "credits",
+          "spend_limit": 5000,
+          "costs": {
+            "generate_image": {
+              "credits": [
+                2,
+                1230
+              ],
+              "note": "per image; depends on model, size and count; estimate first"
+            },
+            "generate_video": {
+              "credits": [
+                20,
+                2500
+              ],
+              "note": "per clip; depends on model, length and resolution; Radiate caps one call at 2,500"
+            },
+            "generate_music": {
+              "credits": [
+                5,
+                20
+              ],
+              "note": "per track"
+            },
+            "generate_with_model": {
+              "credits": [
+                1,
+                2500
+              ],
+              "note": "any catalog model; estimate_model_cost first; Radiate caps one call at 2,500"
+            },
+            "create_media": {
+              "credits": [
+                1,
+                2500
+              ],
+              "note": "image, video or audio; estimate first; Radiate caps one call at 2,500"
+            },
+            "run_canvas_graph": {
+              "credits": [
+                1,
+                2500
+              ],
+              "note": "sum of the graph's nodes; estimate_canvas_graph_cost first"
+            }
+          }
+        }
+      }
+    }
+  }
+}
