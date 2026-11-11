@@ -103,7 +103,8 @@ OPENCLAW_OAUTH_KEYS = {"auth", "oauth"}
 OPENCLAW_ENV_HEADER_RE = re.compile(r"(Bearer )?\$\{([A-Z0-9_]+)\}")
 # Connection tokens accept only these risk classes; Radiate refuses the rest.
 TOKEN_TOOL_RISKS = {"read", "write"}
-TOKEN_HOSTS = {"xai_api", "grok_app", "other"}
+# Radiate records this host on every call and charge the token makes (BE #9735 adds it).
+OPENCLAW_TOKEN_HOST = "openclaw"
 OAUTH_STEP_RE = re.compile(r"mcp\s+login|[\"']auth[\"']\s*:|clientMetadataUrl|--auth\s+oauth", re.IGNORECASE)
 TEXT_SUFFIXES = {".json", ".md", ".yml", ".yaml", ".py", ".txt", ""}
 
@@ -324,8 +325,8 @@ def check_openclaw(root: Path, url: str, inventory: dict, report: Report) -> Non
     if request:
         if set(request) != {"label", "host", "tools", "expires_in_days"}:
             report.error(OPENCLAW_TOKEN_REQUEST, "must hold exactly label, host, tools and expires_in_days")
-        if request.get("host") not in TOKEN_HOSTS:
-            report.error(OPENCLAW_TOKEN_REQUEST, f"host must be one of {sorted(TOKEN_HOSTS)}")
+        if request.get("host") != OPENCLAW_TOKEN_HOST:
+            report.error(OPENCLAW_TOKEN_REQUEST, f"host must be {OPENCLAW_TOKEN_HOST!r}")
         days = request.get("expires_in_days")
         if isinstance(days, bool) or not isinstance(days, int) or not 1 <= days <= 90:
             report.error(OPENCLAW_TOKEN_REQUEST, "expires_in_days must be 1 to 90")

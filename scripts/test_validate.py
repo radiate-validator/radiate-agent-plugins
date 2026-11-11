@@ -176,6 +176,10 @@ class ValidateTest(unittest.TestCase):
         self.edit_json(OPENCLAW_TOKEN_REQUEST, lambda d: d.update(tools=["get_mcp_identity", "no_such_tool"]))
         self.assertCaught("'no_such_tool' is not in tools/inventory.json")
 
+    def test_connection_token_request_names_the_openclaw_host(self) -> None:
+        self.edit_json(OPENCLAW_TOKEN_REQUEST, lambda d: d.update(host="other"))
+        self.assertCaught("host must be 'openclaw'")
+
 
 if __name__ == "__main__":
     unittest.main()

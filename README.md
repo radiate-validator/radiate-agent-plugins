@@ -117,8 +117,9 @@ Radiate Studio has no screen for connection tokens yet (it is planned for
 Settings → Integrations), and the feature is off on the development server
 until Radiate turns it on. Until then, create one through Radiate's API while
 signed in to Radiate, with [`openclaw/connection-token-request.json`](openclaw/connection-token-request.json)
-as the request. That file names the tools the token may use (all free) and
-asks for 30 days; the longest allowed is 90.
+as the request. That file names the tools the token may use (all free),
+asks for 30 days (the longest allowed is 90), and sets `"host": "openclaw"`
+so Radiate labels the token's calls as OpenClaw in your usage.
 
 ```bash
 curl -sS -X POST https://backend-dev.radiatestudio.ai/api/v2/mcp/connection-tokens \

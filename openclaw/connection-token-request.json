@@ -1,6 +1,6 @@
 {
   "label": "OpenClaw",
-  "host": "other",
+  "host": "openclaw",
   "expires_in_days": 30,
   "tools": [
     "get_mcp_identity",
