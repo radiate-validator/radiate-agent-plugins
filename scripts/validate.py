@@ -2,8 +2,9 @@
 """Validate the Radiate agent plugin package. Standard library only; makes no network calls.
 
 Checks the Agent Plugins v1 manifests (plugin.json, mcp.json), the Hermes and
-Claude Code metadata, every skill's frontmatter, the curated tool lists, and
-that nothing that looks like a credential is committed.
+Claude Code metadata, the OpenClaw server entry (a connection-token header from
+an environment variable, never OAuth), every skill's frontmatter, the curated
+tool lists, and that nothing that looks like a credential is committed.
 
     python3 scripts/validate.py          # check; exit 1 on any error
     python3 scripts/validate.py --sync   # copy skills/ into claude-code/skills/, then check
@@ -81,9 +82,29 @@ SECRET_PATTERNS = {
     "Slack token": re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}"),
     "Stripe key": re.compile(r"\b[rs]k_(?:live|test)_[A-Za-z0-9]{10,}"),
     "private key": re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
-    "bearer token": re.compile(r"Bearer\s+[A-Za-z0-9._~+/=-]{20,}"),
+    "bearer token": re.compile(r"Bearer\s+[A-Za-z0-9._~+/=-]{20,}", re.IGNORECASE),
     "JWT": re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"),
+    # A Radiate connection token is 40 letters and digits with no prefix, so it is
+    # only recognisable next to the variable that should hold it.
+    "Radiate connection token": re.compile(r"RADIATE_MCP_TOKEN\s*[=:]\s*[\"']?[A-Za-z0-9]{20,}"),
 }
+# OpenClaw connects with a Radiate connection token sent as a bearer header that
+# OpenClaw fills in from an environment variable at runtime (Eric 2026-11-11).
+# Radiate's Auth0 has no OpenClaw client (no dynamic client registration, no
+# CIMD), so the OpenClaw server entry must never use OAuth.
+OPENCLAW_SERVER = "openclaw/radiate.json"
+OPENCLAW_TOKEN_REQUEST = "openclaw/connection-token-request.json"
+OPENCLAW_TOKEN_ENV = "RADIATE_MCP_TOKEN"
+OPENCLAW_HEADERS = {"Authorization": "Bearer ${" + OPENCLAW_TOKEN_ENV + "}"}
+OPENCLAW_SERVER_KEYS = {"url", "transport", "headers", "codex"}
+OPENCLAW_OAUTH_KEYS = {"auth", "oauth"}
+# OpenClaw's own reading of a header value (src/agents/bundle-mcp-adapter.ts,
+# decodeHeaderEnvPlaceholder): "Bearer ${NAME}" or "${NAME}", nothing else.
+OPENCLAW_ENV_HEADER_RE = re.compile(r"(Bearer )?\$\{([A-Z0-9_]+)\}")
+# Connection tokens accept only these risk classes; Radiate refuses the rest.
+TOKEN_TOOL_RISKS = {"read", "write"}
+TOKEN_HOSTS = {"xai_api", "grok_app", "other"}
+OAUTH_STEP_RE = re.compile(r"mcp\s+login|[\"']auth[\"']\s*:|clientMetadataUrl|--auth\s+oauth", re.IGNORECASE)
 TEXT_SUFFIXES = {".json", ".md", ".yml", ".yaml", ".py", ".txt", ""}
 
 
@@ -234,7 +255,8 @@ def check_mcp(root: Path, report: Report) -> tuple[set[str], str]:
         return set(), ""
     server = servers["radiate"]
     if not isinstance(server, dict) or set(server) != {"type", "url"}:
-        # No headers: credentials come from the host's own OAuth sign-in, never the package.
+        # No headers: every host reads this file, and Hermes, Codex and Claude Code sign in
+        # with their own OAuth. OpenClaw's token header lives in openclaw/radiate.json.
         report.error("mcp.json radiate", "must hold only type and url (no headers, no credentials)")
         return {"radiate"}, ""
     if server.get("type") != "streamable-http":
@@ -267,6 +289,70 @@ def check_claude_code(root: Path, plugin: dict, url: str, report: Report) -> Non
         report.error(f"{base}/.mcp.json", "radiate must hold only type 'http' and url")
     elif mcp and server.get("url") != url:
         report.error(f"{base}/.mcp.json", "radiate url must match mcp.json")
+
+
+def check_openclaw(root: Path, url: str, inventory: dict, report: Report) -> None:
+    """The OpenClaw server entry: the mcp.json URL plus a bearer header from RADIATE_MCP_TOKEN."""
+    server = load_json(root, OPENCLAW_SERVER, report) or {}
+    if server:
+        if set(server) & OPENCLAW_OAUTH_KEYS:
+            report.error(
+                OPENCLAW_SERVER,
+                "no OAuth for OpenClaw: Radiate has no OpenClaw sign-in client (no DCR, no CIMD); "
+                "it connects with a connection token",
+            )
+        for key in sorted(set(server) - OPENCLAW_SERVER_KEYS - OPENCLAW_OAUTH_KEYS):
+            report.error(OPENCLAW_SERVER, f"unexpected key {key!r}")
+        if server.get("url") != url:
+            report.error(OPENCLAW_SERVER, "url must match mcp.json")
+        if server.get("transport") != "streamable-http":
+            report.error(OPENCLAW_SERVER, "transport must be streamable-http")
+        headers = server.get("headers")
+        if headers != OPENCLAW_HEADERS:
+            report.error(
+                OPENCLAW_SERVER,
+                f"headers must be exactly {OPENCLAW_HEADERS}: an env reference OpenClaw resolves "
+                "at runtime, never a literal token",
+            )
+        if isinstance(headers, dict):
+            for name, value in headers.items():
+                if not isinstance(value, str) or not OPENCLAW_ENV_HEADER_RE.fullmatch(value):
+                    report.error(f"{OPENCLAW_SERVER} headers.{name}", "must be an env reference, never a literal")
+        if server.get("codex", {"defaultToolsApprovalMode": "prompt"}) != {"defaultToolsApprovalMode": "prompt"}:
+            report.error(OPENCLAW_SERVER, "codex must be {'defaultToolsApprovalMode': 'prompt'}")
+    request = load_json(root, OPENCLAW_TOKEN_REQUEST, report) or {}
+    if request:
+        if set(request) != {"label", "host", "tools", "expires_in_days"}:
+            report.error(OPENCLAW_TOKEN_REQUEST, "must hold exactly label, host, tools and expires_in_days")
+        if request.get("host") not in TOKEN_HOSTS:
+            report.error(OPENCLAW_TOKEN_REQUEST, f"host must be one of {sorted(TOKEN_HOSTS)}")
+        days = request.get("expires_in_days")
+        if isinstance(days, bool) or not isinstance(days, int) or not 1 <= days <= 90:
+            report.error(OPENCLAW_TOKEN_REQUEST, "expires_in_days must be 1 to 90")
+        tools = request.get("tools")
+        if (
+            not isinstance(tools, list)
+            or not all(isinstance(tool, str) for tool in tools)
+            or not 1 <= len(tools) <= 50
+            or len(set(tools)) != len(tools)
+        ):
+            report.error(OPENCLAW_TOKEN_REQUEST, "tools must list 1 to 50 distinct tools")
+            tools = []
+        for tool in tools:
+            if tool not in inventory:
+                report.error(OPENCLAW_TOKEN_REQUEST, f"{tool!r} is not in tools/inventory.json")
+            elif inventory[tool] not in TOKEN_TOOL_RISKS:
+                report.error(
+                    OPENCLAW_TOKEN_REQUEST,
+                    f"{tool!r} is {inventory[tool]}: connection tokens get read and write tools only",
+                )
+    readme = root / "README.md"
+    text = readme.read_text(encoding="utf-8") if readme.is_file() else ""
+    match = re.search(r"^### OpenClaw\n(.*?)(?=^##)", text, re.MULTILINE | re.DOTALL)
+    if match is None:
+        report.error("README.md", "needs an '### OpenClaw' section")
+    elif OAUTH_STEP_RE.search(match.group(1)):
+        report.error("README.md OpenClaw", "no OAuth: OpenClaw connects with a connection token")
 
 
 def parse_frontmatter(text: str) -> dict[str, str] | None:
@@ -402,6 +488,7 @@ def validate(root: Path) -> Report:
     servers, url = check_mcp(root, report)
     plugin = check_plugin(root, inventory, servers, report)
     check_claude_code(root, plugin, url, report)
+    check_openclaw(root, url, inventory, report)
     skills = check_skills(root, plugin, inventory, report)
     check_tools(root, inventory, skills, report)
     check_secrets(root, report)

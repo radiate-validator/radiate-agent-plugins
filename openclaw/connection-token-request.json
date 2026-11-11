@@ -1,0 +1,32 @@
+{
+  "label": "OpenClaw",
+  "host": "other",
+  "expires_in_days": 30,
+  "tools": [
+    "get_mcp_identity",
+    "get_credit_balance",
+    "list_generation_models",
+    "search_models",
+    "recommend_model",
+    "estimate_generation_cost",
+    "estimate_model_cost",
+    "estimate_canvas_graph_cost",
+    "get_service_pricing",
+    "get_generation_status",
+    "get_job",
+    "list_mcp_jobs",
+    "list_projects",
+    "get_project_context",
+    "list_project_assets",
+    "create_project",
+    "add_project_note",
+    "propose_project_change_set",
+    "list_canvas_boards",
+    "get_canvas_board",
+    "list_canvas_templates",
+    "list_node_catalog",
+    "get_node_schema",
+    "validate_canvas_graph",
+    "get_canvas_graph_run"
+  ]
+}

@@ -1,7 +1,7 @@
 ---
 name: radiate-local-compute
 description: Run Blender renders or scene checks on the user's own machine through the Radiate compute connector. Use only when the user asks to render on their own GPU or workstation that they have paired with Radiate. Plans first, shows the plan, and needs approval in Radiate for every run.
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Local compute through Radiate

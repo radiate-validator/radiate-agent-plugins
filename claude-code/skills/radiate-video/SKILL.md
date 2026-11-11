@@ -1,7 +1,7 @@
 ---
 name: radiate-video
 description: Create video clips with Radiate Studio (Luma, Seedance, MiniMax and other catalog models), from text or from a start image. Use when the user asks for a video, clip, animation, shot or motion from a still. Video is the most expensive media, so always quote first.
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Video with Radiate

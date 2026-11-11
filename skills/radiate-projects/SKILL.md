@@ -1,7 +1,7 @@
 ---
 name: radiate-projects
 description: Use the user's Radiate Studio projects (story, scenes, shots, characters, notes and assets) as working memory. Use when the user mentions a Radiate project, wants generated media filed into one, or asks what is in a project. Reading is free; any change is proposed for the user to accept in Radiate.
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Radiate projects
