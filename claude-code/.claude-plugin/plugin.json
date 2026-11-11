@@ -1,6 +1,6 @@
 {
   "name": "radiate",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Radiate Studio for Claude Code: image, video and audio generation, projects and canvas workflows over Radiate's hosted MCP server, with a price shown before every spend. Preview: points at Radiate's development server.",
   "author": {
     "name": "Radiate Validator LLC",

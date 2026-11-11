@@ -22,7 +22,7 @@ with several agents:
 | Agent | What it loads | Status |
 | --- | --- | --- |
 | [Hermes Agent](https://github.com/NousResearch/hermes-agent) | Root `plugin.json` + `mcp.json` + `skills/` as a portable plugin, with Hermes cost and spend-limit metadata | Preview: needs the Radiate `hermes` sign-in client (below) |
-| [OpenClaw](https://docs.openclaw.ai) | The same root package as an Agent Plugins bundle | Preview: skills work; sign-in pending (below) |
+| [OpenClaw](https://docs.openclaw.ai) | The same root package as an Agent Plugins bundle, plus the server entry in `openclaw/radiate.json` | Preview: connects with a Radiate connection token; read and write tools and quotes only, no paid generation (below) |
 | Codex | The root `plugin.json` | Preview: uses Radiate's existing Codex sign-in client |
 | Claude Code | `claude-code/` (its own `.claude-plugin/` manifest, `.mcp.json` and a copy of the skills) | Preview: sign-in not yet verified |
 
@@ -33,6 +33,8 @@ It is **not** listed in any plugin catalog or marketplace yet.
 ```text
 plugin.json            Agent Plugins v1 manifest, with Hermes trust/costs/spend_limit
 mcp.json               the Radiate MCP server (remote, streamable HTTP; no credentials)
+openclaw/              OpenClaw's server entry (token header read from an environment
+                       variable) and the request that creates its connection token
 skills/                seven workflow skills shared by every agent
   radiate-studio/        the rules: sign-in, quote → confirm → run → follow, approvals, caps
   radiate-image/         images
@@ -58,8 +60,10 @@ your agent, and every action is a call to Radiate's hosted MCP server.
 
 ## Install and sign in
 
-Sign-in is always OAuth in your browser. **This package never asks for an API
-key, and you should never paste one into chat.**
+Hermes, Codex and Claude Code sign in with OAuth in your browser. OpenClaw
+connects with a Radiate **connection token** that you keep in an environment
+variable on your own machine. **This package contains no token, never asks you
+for one in chat, and you should never paste one into chat.**
 
 ### Hermes Agent
 
@@ -94,19 +98,89 @@ To keep the tool list small, enable only the tools in
 
 ### OpenClaw
 
+OpenClaw connects with a Radiate **connection token**, sent as an
+`Authorization: Bearer` header. It does not sign in with OAuth and has no
+browser sign-in step: Radiate's sign-in server doesn't accept the client
+registration OpenClaw would need, so Radiate gives OpenClaw a scoped token
+instead.
+
+**What a connection token can do.** Free read and write tools only: account,
+balance, model search, **quotes** (the estimate tools), job status, projects
+and canvas reads. Radiate refuses every tool that spends credits, and every
+high-risk tool, on a connection token (`connection_token_tool_refused`), so
+**OpenClaw can't run paid generation yet**. That arrives with approvals inside
+Radiate; until then, run paid jobs in Radiate Studio.
+
+#### 1. Create a connection token
+
+Radiate Studio has no screen for connection tokens yet (it is planned for
+Settings → Integrations), and the feature is off on the development server
+until Radiate turns it on. Until then, create one through Radiate's API while
+signed in to Radiate, with [`openclaw/connection-token-request.json`](openclaw/connection-token-request.json)
+as the request. That file names the tools the token may use (all free),
+asks for 30 days (the longest allowed is 90), and sets `"host": "openclaw"`
+so Radiate labels the token's calls as OpenClaw in your usage.
+
+```bash
+curl -sS -X POST https://backend-dev.radiatestudio.ai/api/v2/mcp/connection-tokens \
+  -H "Authorization: Bearer $RADIATE_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data @radiate-agent-plugins/openclaw/connection-token-request.json
+```
+
+`$RADIATE_ACCESS_TOKEN` is an access token from your own Radiate sign-in (the
+one Radiate Studio uses), not the connection token. Until the Settings screen
+ships, this step is meant for developers and preview testers.
+
+The answer holds the token's `id` (keep it: you need it to revoke the token)
+and, **once only**, its `secret`: the connection token. Radiate stores only a
+hash of it and can't show it again.
+
+#### 2. Store it in `RADIATE_MCP_TOKEN`
+
+Put it where OpenClaw's Gateway reads its environment, for example
+`~/.openclaw/.env`. `read -s` keeps it out of your shell history:
+
+```bash
+mkdir -p ~/.openclaw && umask 077
+read -rsp 'Radiate connection token: ' RADIATE_MCP_TOKEN && echo
+printf 'RADIATE_MCP_TOKEN=%s\n' "$RADIATE_MCP_TOKEN" >> ~/.openclaw/.env
+unset RADIATE_MCP_TOKEN
+```
+
+#### 3. Install and connect
+
 ```bash
 git clone https://github.com/radiate-validator/radiate-agent-plugins
 openclaw plugins install ./radiate-agent-plugins
-openclaw mcp set radiate '{"url":"https://mcp-dev.radiatestudio.ai/mcp","transport":"streamable-http","auth":"oauth"}'
-openclaw mcp login radiate
+openclaw mcp set radiate "$(cat radiate-agent-plugins/openclaw/radiate.json)"
+openclaw mcp probe radiate
 ```
 
-**Sign-in is pending.** OpenClaw registers its sign-in client automatically
-(dynamic client registration), and Radiate's sign-in server only accepts
-clients that Radiate has registered. Until Radiate adds an OpenClaw client,
-`openclaw mcp login radiate` will fail; the skills still load. OpenClaw has no
-per-tool cost controls, so keep its approval mode at **prompt** for the
-`radiate` server and rely on Radiate's approvals and caps (below).
+[`openclaw/radiate.json`](openclaw/radiate.json) is the package's `mcp.json`
+server plus one header, `"Authorization": "Bearer ${RADIATE_MCP_TOKEN}"`.
+OpenClaw saves that reference as written and fills in the token from the
+environment when it connects, so the token never lands in OpenClaw's config
+file. The entry replaces the package's own `radiate` server in OpenClaw. It
+also sets `codex.defaultToolsApprovalMode` to `prompt`, so OpenClaw's Codex
+runtime asks you before each Radiate tool call.
+
+#### Revoke or replace it
+
+Revoke a token as soon as you stop using it or think it has leaked. Revoking
+works even while connection tokens are switched off; the list works only
+while they are on:
+
+```bash
+curl -sS https://backend-dev.radiatestudio.ai/api/v2/mcp/connection-tokens \
+  -H "Authorization: Bearer $RADIATE_ACCESS_TOKEN"            # list: ids, labels, expiry
+curl -sS -X DELETE https://backend-dev.radiatestudio.ai/api/v2/mcp/connection-tokens/TOKEN_ID \
+  -H "Authorization: Bearer $RADIATE_ACCESS_TOKEN"            # revoke one
+```
+
+Then delete the `RADIATE_MCP_TOKEN` line from `~/.openclaw/.env`. A token also
+stops working when it expires; to keep going, create a new one and replace the
+line.
 
 ### Claude Code
 
@@ -154,12 +228,16 @@ behaving well.
 5. **Narrow tool access.** The default tool list has no high-risk tools.
    `run_compute_job` (renders on your own machine) is opt-in, and
    `blender_live_command` and `launch_original` are never on by default.
+6. **No spending from connection tokens.** An OpenClaw connection token can
+   only use the free read and write tools it was created with. Radiate
+   refuses every spending or high-risk call on it, whatever the agent asks.
 
 **Network and spend disclosure.** When enabled, this package makes your agent
 call `mcp-dev.radiatestudio.ai` (later `mcp.radiatestudio.ai`) and Radiate's
-sign-in server, `auth.radiatestudio.ai`. Paid tools spend Radiate credits from
-your account. The package itself sends nothing anywhere and has no
-auto-updater.
+sign-in server, `auth.radiatestudio.ai`. In OpenClaw it sends your connection
+token to `mcp-dev.radiatestudio.ai` and nowhere else. Paid tools spend Radiate
+credits from your account. The package itself sends nothing anywhere and has
+no auto-updater.
 
 ## Licence
 
@@ -180,5 +258,5 @@ CI**; a maintainer reviews them first. Report security issues as described in
 - Radiate Studio: https://radiatestudio.ai
 - Agent Plugins specification: https://agent-plugins.org/specification
 - Hermes portable plugins: https://github.com/NousResearch/hermes-agent (developer guide → plugins)
-- OpenClaw MCP sign-in: https://docs.openclaw.ai/cli/mcp
+- OpenClaw MCP servers and headers: https://docs.openclaw.ai/cli/mcp/transports
 - Claude Code plugins: https://docs.claude.com/en/docs/claude-code/plugins

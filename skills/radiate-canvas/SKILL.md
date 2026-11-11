@@ -1,7 +1,7 @@
 ---
 name: radiate-canvas
 description: Run repeatable multi-step pipelines as Radiate Canvas graphs (for example prompt to image to video to upscale). Use when the user wants the same chain of generation steps run again, batched, or on a schedule. Validates and prices the whole graph before running it.
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Radiate Canvas graphs
