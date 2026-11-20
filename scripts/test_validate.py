@@ -165,6 +165,30 @@ class ValidateTest(unittest.TestCase):
             path.write_text(text.replace("### OpenClaw\n", f"### OpenClaw\n\n{line}\n", 1), encoding="utf-8")
             self.assertCaught("README.md OpenClaw: no OAuth")
 
+    def test_readme_openclaw_subsections_are_checked_too(self) -> None:
+        # The setup commands live under "#### n." headings inside the OpenClaw section.
+        path = self.root / "README.md"
+        text = (REPO / "README.md").read_text(encoding="utf-8")
+        probe = "openclaw mcp probe radiate"
+        self.assertEqual(text.count(probe), 1)
+        path.write_text(text.replace(probe, "openclaw mcp login radiate", 1), encoding="utf-8")
+        self.assertCaught("README.md OpenClaw: no OAuth")
+
+    def test_readme_openclaw_section_ends_at_the_next_section(self) -> None:
+        # A later section (here Claude Code) is not part of the OpenClaw check.
+        path = self.root / "README.md"
+        text = (REPO / "README.md").read_text(encoding="utf-8")
+        path.write_text(text.replace("### Claude Code\n", "### Claude Code\n\nopenclaw mcp login radiate\n", 1), encoding="utf-8")
+        self.assertNotIn("README.md OpenClaw: no OAuth", " ".join(self.errors()))
+
+    def test_readme_steps_clone_before_using_the_token_request_file(self) -> None:
+        text = (REPO / "README.md").read_text(encoding="utf-8")
+        section = text[text.index("### OpenClaw\n") : text.index("### Claude Code\n")]
+        self.assertLess(
+            section.index("git clone https://github.com/radiate-validator/radiate-agent-plugins"),
+            section.index("--data @radiate-agent-plugins/openclaw/connection-token-request.json"),
+        )
+
     def test_a_pasted_connection_token_is_caught(self) -> None:
         fake = "Q7" * 20  # the shape of a Radiate connection token: 40 letters and digits
         (self.root / "notes.md").write_text(f"export RADIATE_MCP_TOKEN={fake}\n", encoding="utf-8")

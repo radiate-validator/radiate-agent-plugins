@@ -349,7 +349,9 @@ def check_openclaw(root: Path, url: str, inventory: dict, report: Report) -> Non
                 )
     readme = root / "README.md"
     text = readme.read_text(encoding="utf-8") if readme.is_file() else ""
-    match = re.search(r"^### OpenClaw\n(.*?)(?=^##)", text, re.MULTILINE | re.DOTALL)
+    # The section runs to the next heading of the same or a higher level (or the end), so its
+    # "#### n." subsections, where the setup commands live, are checked too.
+    match = re.search(r"^### OpenClaw\n(.*?)(?=^#{1,3}[ \t]|\Z)", text, re.MULTILINE | re.DOTALL)
     if match is None:
         report.error("README.md", "needs an '### OpenClaw' section")
     elif OAUTH_STEP_RE.search(match.group(1)):

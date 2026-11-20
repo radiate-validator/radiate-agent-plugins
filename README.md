@@ -119,9 +119,12 @@ until Radiate turns it on. Until then, create one through Radiate's API while
 signed in to Radiate, with [`openclaw/connection-token-request.json`](openclaw/connection-token-request.json)
 as the request. That file names the tools the token may use (all free),
 asks for 30 days (the longest allowed is 90), and sets `"host": "openclaw"`
-so Radiate labels the token's calls as OpenClaw in your usage.
+so Radiate labels the token's calls as OpenClaw in your usage. Clone this
+repository first, so the request file is on disk, then run the request from
+the directory you cloned into:
 
 ```bash
+git clone https://github.com/radiate-validator/radiate-agent-plugins
 curl -sS -X POST https://backend-dev.radiatestudio.ai/api/v2/mcp/connection-tokens \
   -H "Authorization: Bearer $RADIATE_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
@@ -150,8 +153,9 @@ unset RADIATE_MCP_TOKEN
 
 #### 3. Install and connect
 
+From the same directory (the clone from step 1):
+
 ```bash
-git clone https://github.com/radiate-validator/radiate-agent-plugins
 openclaw plugins install ./radiate-agent-plugins
 openclaw mcp set radiate "$(cat radiate-agent-plugins/openclaw/radiate.json)"
 openclaw mcp probe radiate
