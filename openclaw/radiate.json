@@ -1,0 +1,10 @@
+{
+  "url": "https://mcp-dev.radiatestudio.ai/mcp",
+  "transport": "streamable-http",
+  "headers": {
+    "Authorization": "Bearer ${RADIATE_MCP_TOKEN}"
+  },
+  "codex": {
+    "defaultToolsApprovalMode": "prompt"
+  }
+}

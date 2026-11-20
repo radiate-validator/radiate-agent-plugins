@@ -1,7 +1,7 @@
 ---
 name: radiate-audio
 description: Create music, voice-over and sound effects with Radiate Studio. Use when the user asks for a soundtrack, song, score, jingle, narration, character voice or sound effect. Quotes the price and gets a yes before generating.
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Audio with Radiate

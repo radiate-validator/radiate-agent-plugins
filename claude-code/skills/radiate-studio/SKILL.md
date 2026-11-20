@@ -1,7 +1,7 @@
 ---
 name: radiate-studio
 description: Rules for every Radiate Studio task (image, video, audio, projects, canvas). Use first whenever the user asks to create media with Radiate or work in a Radiate project. Covers sign-in, quoting before spending, approvals, credit caps and following long jobs.
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Radiate Studio: the rules for every task
@@ -23,12 +23,17 @@ Load the matching skill for the work, after this one:
 
 ## 1. Sign-in
 
-- The user signs in to Radiate in their browser through their agent's MCP
-  OAuth login. You never handle their password.
+- Most hosts sign the user in to Radiate in their browser through the host's
+  MCP OAuth login. OpenClaw instead sends a Radiate connection token that the
+  user keeps in the `RADIATE_MCP_TOKEN` environment variable on their machine.
+  You never handle their password or their token.
 - **Never ask for, accept or store an API key, token or password.** If the user
   pastes one, tell them not to share it in chat and to revoke it in Radiate.
 - If a tool answers that sign-in is required (HTTP 401, `authorization-required`),
   tell the user to run their host's login command (see the README) and stop.
+  In OpenClaw it means the connection token is missing, expired or revoked:
+  tell the user to create a new one and update `RADIATE_MCP_TOKEN` themselves
+  (see the README), and stop.
 - Call `get_mcp_identity` once at the start to confirm who is signed in.
 
 ## 2. Quote, confirm, run, follow
@@ -96,6 +101,11 @@ cap. The user can only change the caps in Radiate.
 
 ## 5. Errors
 
+- `connection_token_tool_refused`: this connection is a connection token
+  (OpenClaw), which may use only free read and write tools. Paid generation
+  and high-risk tools aren't available from it yet. Say so, offer the quote
+  you can still give, suggest running the job in Radiate Studio, and don't
+  retry.
 - Out of credits: tell the user, and don't retry.
 - A job that failed is refunded by Radiate. Report the error. Trying again
   is a new run: quote and confirm again, with a new `idempotency_key`.

@@ -1,7 +1,7 @@
 ---
 name: radiate-image
 description: Create images with Radiate Studio (FLUX, Nano Banana and other catalog models). Use when the user asks for an image, still, poster, concept art, storyboard frame or variations. Quotes the price and gets a yes before generating.
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Images with Radiate
